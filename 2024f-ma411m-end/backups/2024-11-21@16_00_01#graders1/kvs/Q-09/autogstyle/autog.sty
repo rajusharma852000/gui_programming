@@ -1,0 +1,146 @@
+%%%%%%%%%%% one tex style file for all graders/resolvers pages
+%%%%%%%%%%      number of panes is 1 or 2 based on deletion below of :numofpanes:
+\usepackage{standalone}
+\usepackage{amssymb,amsmath,graphicx,calculator,color,ifthen,datatool}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+
+\newlength{\scanwidth}
+\newlength{\scanheight}
+\newlength{\panewidth}
+\newlength{\autogtotalwidth}
+\newlength{\autogtotalheight}
+
+\newlength{\autogmargin} 
+\setlength{\autogmargin}{2mm}
+\setlength{\scanwidth}{210mm}
+\setlength{\scanheight}{297mm}
+\setlength{\panewidth}{80mm}
+\setlength{\fboxsep}{2mm}
+\setlength{\parindent}{0mm}
+\newcommand{\numofpanes}{1} %number of panes is 1 for graders and 2 for resolvers
+\renewcommand{\numofpanes}{2} %:numofpanes:deleteme4onepane:   %%%% comment for sed
+\renewcommand{\numofpanes}{1} %:numofpanes:deleteme4twopanes:   %%%% comment for sed
+			      % default is one pane. 
+\LENGTHADD{\scanwidth}{\numofpanes\panewidth}{\autogtotalwidth}
+\LENGTHADD{\autogtotalwidth}{2\autogmargin}{\autogtotalwidth}
+\COPY{\scanheight}{\autogtotalheight}
+\LENGTHADD{\autogtotalheight}{2\autogmargin}{\autogtotalheight}
+\usepackage[	paperheight=\autogtotalheight,
+			paperwidth=\autogtotalwidth,
+			margin=\autogmargin
+			]{geometry}	
+\pagestyle{empty}
+
+
+\usepackage[absolute]{textpos}	%,showboxes
+\TPMargin{0pt}
+
+\newcommand{\scansdir}{../../../scans}
+\newcommand{\showscan}[1]{
+		\begin{textblock*}{\scanwidth}(\autogmargin,\autogmargin)
+		\resizebox{\scanwidth}{!}{
+			\fbox{\includegraphics[]{\scansdir/page-#1.pdf}}
+			} 
+		\end{textblock*}
+}
+\newlength{\vslider}
+\newlength{\hslider}
+\newcommand{\putinpane}[1]{
+	\begin{textblock*}{\panewidth}(\hslider,\vslider) 
+			#1	
+	\end{textblock*}
+	}
+\newcommand{\formatpageid}[1]{
+	\framebox{PageID: \textbf{\textcolor{blue}{\LARGE #1}}}
+	}
+\newcommand{\formatmarkingscheme}[1]{
+	\framebox{MarkingScheme: \textbf{\textcolor{blue}{\small #1}}}
+	}
+\newcommand{\formatmarks}[1]{
+	\framebox{PageMark: \textbf{\textcolor{red}{\small #1}}}
+	}
+\newcommand{\formatcomment}[1]{
+	\begin{minipage}{0.95\panewidth}
+		\textbf{\textcolor{red}{\large #1}}
+	\end{minipage}
+	}
+\newcommand{\showpageid}[1]{
+	\setlength{\vslider}{\autogmargin}
+	\putinpane{\formatpageid{#1}}
+	}	
+\newcommand{\showmarkingscheme}[1]{
+	\setlength{\vslider}{12mm}
+	\putinpane{\formatmarkingscheme{#1}}
+	}
+
+\newcommand{\putmarks}[1]{
+	\setlength{\vslider}{21mm}
+	\putinpane{\formatmarks{#1}}
+	}
+	\newcommand{\putcommentT}[1]{
+			\setlength{\vslider}{50mm}
+			\putinpane{\formatcomment{#1}}
+			}
+	\newcommand{\putcommentM}[1]{
+			\setlength{\vslider}{150mm}
+			\putinpane{\formatcomment{#1}}
+			}
+	\newcommand{\putcommentB}[1]{
+			\setlength{\vslider}{220mm}
+			\putinpane{\formatcomment{#1}}
+			}
+	\newcommand{\putcommentC}[1]{   
+			#1
+			}
+			
+
+
+
+\newcommand{\setpanenumber}[1]{ %
+	\SUBTRACT{#1}{1}{\thispane}
+	\LENGTHADD{1.005\scanwidth}{\thispane\panewidth}{\hslider}
+	\LENGTHADD{\hslider}{\autogmargin}{\hslider}
+	}
+	
+
+\newcommand{\nextcommandmarker}{}
+%% some macros for graders
+\newcommand{\correct}{\Huge\textcolor{red}{\checkmark}\normalsize}
+\newcommand{\wrong}{\Huge\textcolor{red}{X}\normalsize}
+
+\newlength{\Xposition}
+\newlength{\Yposition}
+\newcommand{\putatXYcm}[3]{%
+	\LENGTHADD{#1cm}{\autogmargin}{\Xposition}
+	\LENGTHADD{#2cm}{\autogmargin}{\Yposition}
+	\begin{textblock*}{\scanwidth}(\Xposition,\Yposition) 
+			\textcolor{red}{#3}
+	\end{textblock*}
+	}
+
+\newcommand{\ellipseXYmajmincm}[4]
+{%
+	\LENGTHADD{#1cm}{\autogmargin}{\Xposition}% 
+	\LENGTHADD{#2cm}{\autogmargin}{\Yposition}%
+	\begin{textblock*}{\scanwidth}(\Xposition,\Yposition)%
+		 \begin{tikzpicture}%
+    		\node[ellipse,
+    		draw = brown,
+  	  		text = orange,
+   	 		fill = cyan!20,
+			semitransparent,
+  	  		minimum width = #3cm, 
+   		 	minimum height = #4cm] (e) at (0,0) {};
+		\end{tikzpicture}%
+	\end{textblock*}
+}
+
+\newcommand{\ZeroMarks}{%
+  	\small BlankPage \& ZeroMarks by ZStamper\textsuperscript{\copyright}%
+      }
+\newcommand{\BlankPage}{%
+  	\small BlankPage by ZStamper\textsuperscript{\copyright}%
+      }
+
+%%%% style file ends
