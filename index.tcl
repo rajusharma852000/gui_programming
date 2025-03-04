@@ -5,7 +5,7 @@ set current_dir ""
 # Function to select a folder
 proc select_folder {} {
     global current_dir  ;
-    set current_dir [tk_chooseDirectory -title "Select Project Folder"]
+    set current_dir [tk_chooseDirectory -title "Select project Folder"]
     
     if {$current_dir ne ""} {
         .top.loc_entry delete 0 end
@@ -18,7 +18,7 @@ proc select_folder {} {
 proc load_modules {folder} {
     set file_path "$folder/.SubModuleList.csv"
     if {![file exists $file_path]} {
-        tk_messageBox -message "Error: .SubModuleList.csv not found! => $folder" -icon error
+        tk_messageBox -message "Error: .SubModuleList.csv not found!" -icon error
         return
     }
 
@@ -42,12 +42,10 @@ proc load_modules {folder} {
 
 # Function to launch the module window
 proc open_module_window {} {
-     # Close the main index window
-     global current_dir  ;
+    # Close the main index window
+    global current_dir  ;
     set module_folder "[.bottom.module_combo get]"
-    # tk_messageBox -message "Error: .TexFileSequence.csv not found! => $current_dir/$module_folder" -icon error
     destroy .
-    # exec wish module_window.tcl $module_folder &
     exec wish module_window.tcl "$current_dir/$module_folder" &
 }
 
