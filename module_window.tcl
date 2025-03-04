@@ -2,7 +2,7 @@ package require Tk
 package require ttk
 
 set module_folder [lindex $argv 0]  ;# Get module folder from command-line arguments
-set tex_file_sequence "$module_folder/.TexFileSequence.csv"
+set tex_file_sequence "$module_folder/.TexFileSequence.csv" ;#Absolute path
 
 # Function to clear all widgets inside the main window
 proc clear_window {} {
@@ -13,7 +13,7 @@ proc clear_window {} {
 
 proc load_tex_files {file_path} {
     if {![file exists $file_path]} {
-        tk_messageBox -message "Error: .TexFileSequence.csv not found! => $file_path" -icon error
+        tk_messageBox -message "Error: .TexFileSequence.csv not found!" -icon error
         return {}
     }
 
@@ -63,8 +63,8 @@ proc preview_tex {} {
     # Change directory to module_folder and compile .tex file asynchronously
     set current_dir [pwd]
     cd $module_folder
-
-    if {[catch {exec pdflatex -interaction=nonstopmode [file tail $tex_file] &} result]} {
+    # Use catch to handle errors safely
+    if {[catch {exec cmd.exe /c "start /b pdflatex -interaction=nonstopmode 210101097-Q-01-P-01.tex"} result]} {
         tk_messageBox -message "PDF generation failed!\nError: $result" -icon error
         cd $current_dir
         return
@@ -74,8 +74,6 @@ proc preview_tex {} {
 
     # Get generated PDF file
     set pdf_file "$module_folder/[file rootname $selected_tex].pdf"
-    tk_messageBox -message "pdf file: $pdf_file" -icon error
-
     after 5000 [list check_pdf_generation $pdf_file]
 }
 
@@ -86,14 +84,10 @@ proc check_pdf_generation {pdf_file} {
     }
 
     # Open the generated PDF
-    if {$::tcl_platform(os) eq "Windows"} {
         exec cmd.exe /c start "" "$pdf_file"
-    } elseif {$::tcl_platform(os) eq "Darwin"} {
-        exec open "$pdf_file" &
-    } else {
-        exec xdg-open "$pdf_file" &
-    }
+    
 }
+
 
 set tex_ids [load_tex_files $tex_file_sequence]
 if {[llength $tex_ids] > 0} {
@@ -102,8 +96,10 @@ if {[llength $tex_ids] > 0} {
     set default_id ""
 }
 
+#function call
 clear_window
 
+# title
 wm title . "Q-01"
 
 frame .main -padx 10 -pady 10
