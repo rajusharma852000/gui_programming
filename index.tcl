@@ -1,5 +1,6 @@
 package require Tk
-package require ttk
+source /usr/share/tcltk/tk8.6/ttk/ttk.tcl
+
 
 set current_dir ""
 # Function to select a folder
@@ -46,11 +47,7 @@ proc open_module_window {} {
     global current_dir  ;
     set module_folder "[.bottom.module_combo get]"
     destroy .
-<<<<<<< HEAD
     exec wish module_window.tcl "$current_dir/$module_folder" &
-=======
-    exec wish module_window_2.tcl "$current_dir/$module_folder" &
->>>>>>> e072ba4 (Update)
 }
 
 # GUI Elements
@@ -73,5 +70,4 @@ pack .top .bottom -side top -fill x
 if {[info exists tk_version]} {
     vwait forever
 }
-
 
