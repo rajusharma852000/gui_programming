@@ -1,0 +1,41 @@
+\documentclass{article}                              %%%:PREAMBLE:START:       %% line used by sed
+\usepackage{import}
+\subimport{autogstyle/}{autog.sty}
+\begin{document}                                     %%%:PREAMBLE:END:         %% line used by sed
+%%%%%%%%%%%%:CLIP
+%
+\vspace*{1in}
+
+\begin{center}
+	\textbf{\textcolor{blue}{\LARGE :EXAMINFO:}}
+	\vskip 1cm
+	\textbf{\textcolor{blue}{\underline{\Large :THISCOURSENAME:}}}
+	\vskip 1cm
+	\textbf{\textcolor{magenta}{\LARGE Graded Answer Script of :STUDENTINFO:}}
+\end{center}
+
+
+\begin{center}
+	\Huge 
+	\textcolor{red}{
+	\begin{tabular}{*{:NUMOFCOLS:}{r}}
+		:HEADERROW:  \\
+        	:STUDENTMARKSLINE:
+	\end{tabular}
+	}
+        \vskip 2cm
+	\large
+	\underline{Class Performance Stats}
+	\DTLsetseparator{;}
+	\DTLloaddb{marks}{:STATSFILE:}
+	\begin{table}[htbp]
+		\centering
+		\DTLdisplaydb{marks}
+	\end{table}
+	\vskip 1cm
+	:BROADCASTMESSAGE:
+\end{center}
+\ \vfill \ \hfill \small AutoG\textsuperscript{\copyright}
+\newpage
+%
+\end{document}

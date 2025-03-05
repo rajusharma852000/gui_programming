@@ -1,0 +1,14 @@
+\documentclass{article}
+\usepackage{import}
+
+\subimport{autogstyle/}{autog.sty}
+
+\begin{document}
+%%% coordinates measured from top left corner
+%%%%%%%%%%% PUT THIRD INPUT at X and Y given as 1 and 2nd inputs (assumed Centimetres )
+ \putatXYcm{10}{13}{\wrong}
+ \putatXYcm{20}{13}{\correct}
+ 
+ %%%%%%%% ellipse at X,Y (1,2 inputs) of major and minor axes (3,4 inputs)
+ \ellipseXYmajmincm {10}{5}{15}{5} 
+\end{document}

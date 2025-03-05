@@ -1,0 +1,22 @@
+\documentclass{article}                              %%%:PREAMBLE:START:%                    %% line used by sed
+\usepackage{import}
+\subimport{autogstyle/}{autog.sty}
+\begin{document}                                     %%%:PREAMBLE:END:%                      %% line used by sed
+                                                     %%%:CLIP:START:% 			     %% this line used by sed : 
+	\setpanenumber{1}                            %%%:setpane:changeme4forsecondpane:%    %% this line is used by sed %%%
+	
+	\showscan{210101111-02}	
+	\showpageid{210101111-02}		
+	\showmarkingscheme{}		
+	\putcommentT{\putatXYcm{5}{6}{great job}
+\ellipseXYmajmincm{8}{10}{8}{3}
+\correct
+\wrong}\nextcommandmarker	     %% topcomment
+	\putcommentM{}\nextcommandmarker	     %% middle comment										
+	\putcommentB{}\nextcommandmarker																							
+	\putcommentC{}\nextcommandmarker             %% custom comment																					
+	\putmarks{}\nextcommandmarker	             %%:putmarks:g1:%                 %% this line is used by sed %%%
+
+	\rule{1in}{0pt}\newpage			     % the strut is necessary
+                                                     %%%:CLIP:END:%                          %% this line used by sed  %%%
+\end{document}                                       %%%%:POSTAMBLE:%                        %% line used by sed

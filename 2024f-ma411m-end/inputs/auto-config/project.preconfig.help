@@ -1,0 +1,248 @@
+# Help File for AutoG: Configuring the project
+# Try: vim -O +'windo set scrollbind' project.preconfig.settings project.preconfig.help
+
+#------------- About rooms and packets
+
+
+
+   #!venuesequence
+   # example:
+   #   venuesequence=(l1 l2  1102 )
+   # List of venues where test was held 
+   #   or the list of rooms where test was held
+   # These labels for venues should be used while
+   #    scanning the answer booklets
+   # This sequence should be the same as in the 
+   #    list of students file in 
+   #    inputs/SerialNumber-StudentID.csv file
+   # If a venue has the product 
+   #    (number of students 
+   #         * number of pages in booklet)
+   #         > 1000 or 10,000 
+   #    depending on scanner ,
+   #    split the venue into two or more parts 
+   #       like l1a, l1b etc.
+   ###############################################
+
+
+
+   #!packetsize
+   # example :
+   #  packetsize=( [l1]=9 [l2]=10 [1102]=8 )
+   # Number of students per venue/room
+   ###############################################
+
+
+#------------ About the answer booklet
+
+
+   #!numofpages
+   # example: 
+   #   numofpages=8
+   # How many pages in answer booklet per student? 
+   #   max allowed is 99
+   ###############################################
+
+
+   #!qtopages
+   # example : 
+   #   qtopages=( [1]="1 2" [2]="3 4 5" )
+   # question numbers-->pages mapper
+   # question number 1 on pages 1 and 2, 
+   # question number 2 on pages 3, 4, 5 etc.
+   ###############################################
+
+
+   #!pagestepmarks
+   # example: 
+   #    pagestepmarks=([2]="1+2+1" [5]=".5+.5+.5")
+   # Convention:
+   #   (a) Marking Scheme is displayed 
+   #       preferably on the last page of that 
+   #       question, not the first. 
+   #       This helps faster grading as one 
+   #       doesn't have to go back in sequence 
+   #       of pages for a question to give marks
+   # Convention: 
+   #   (b) Example Question 1 on pages 1 and 2: 
+   #       page 2 will have "1+2+1" format. 
+   # Convention:
+   #   (c) If Q-1a) is on page-1 and 
+   #          Q-1b) is on page-2: then 
+   #       you may give 
+   #       on page-1 marking scheme for Q-1a) and
+   #       on page-2 marking scheme for Q-1b) : 
+   #       Together, that is the sum of these 
+   #       two will be marks for Q-1.
+   # Convention: 
+   #   (d) extrapages always have zero 
+   #       marking scheme: their stepmarks 
+   #       are actually list of questions 
+   #       which can appear there
+   ###############################################
+
+#---------- About Extrapages of answer booklet
+
+
+   #!xtrapages
+   # example:
+   #   xtrapages=( 6 7 8 )
+   # Suppose you give page numbers 6, 7 and 8 
+   #   as extra space for writing answers to any
+   #   question
+   ###############################################
+
+
+   #!xtrapagequestions 
+   #   xtrapagequestions=( [6]="1+2+3"   \ 
+   #         [7]="1+2+3"  [8]="1+2+3" )
+   # this is an associative array mapping
+   #   xtrapages--> (possible) question numbers
+   # note the + convention, not SPACE.
+   # example:
+   ###############################################
+
+
+#-------------------- About Scans
+
+
+
+   #!scannerdumpfolder
+   # where does your scanner dump the scans? 
+   
+
+   #!rotatescans="FALSE" 
+   #    should one NOT rotate scans by 180?
+   
+
+   #!rotatescans="TRUE" 
+   #    should one rotate scans by 180?
+   
+
+   #!SCANTYPE="pdf"
+   #    NOT TESTED: jpg, tiff etc.
+   
+
+   #!FILENAMEPATTERN="%03d"
+   #  scanned pages are l1_001.pdf, l1_002.pdf etc
+   #  always assumed venue wise
+   #  always assumed bursted into pages
+   
+
+   #!blankpagemargin 
+   #  this is the allowed margin of error 
+   #  in detecting blank page, in Bytes
+   #  As a rule of thumb: 
+   #     15000  for colour regular PDF scans
+   #      8000  for colour compact PDF scans
+   #      are quite reasonable
+   #      Meaning/Definition: 
+   #        if a scanned page size 
+   #         <= blank page size 
+   #          + blankpagemargin, 
+   #      that page will be treated as blank 
+   #      Low numbers here mean less work for
+   #        zero_stamper/blank_page_recognizer
+   #      High numbers here mean zero_stamper
+   #        and blank_page_recognizer will 
+   #        aggressively mark pages even when
+   #        students have some stuff written 
+   ###############################################
+
+
+#----------------- About the course
+
+
+#!thiscoursenumber="MA101"
+
+
+#!thissemester="Sharad"
+
+
+#!thisyear="2022"
+
+
+#!thisexam="MidSem"
+
+
+#!thiscoursename="Mathematics I"
+
+
+#!broadcastmessage=" Deadline for recheck requests is Mar. 13"
+   # This message is printed on the last page of 
+   #   corrected answer booklet which has the table
+   #   marks of the student
+   ###############################################
+
+
+#-------- Grading Teams
+
+
+
+#!numofgradingteams=1
+   # Is each question bein evaluated by 2
+   #   or just one team of graders?
+   
+#-------- Team 1 for Grading 
+
+
+
+#!graders1=( kvs vw )
+   # kvs in one grader
+   # vw is another grader
+
+
+#!graders1toq=( [kvs]="1 2 3 4" [vw]="5 6 7 8" )
+   # who is grading which questions
+   #
+  
+
+
+
+#!graders1toc=( [kvs]=conf-room [vw]=E102 ) 
+   # these cubicles are referenced 
+   #     in ../config/autog-clients.csv
+   #     where each grader has a cubicle
+   #     and a static IP
+   
+
+#-------- Team 2 for Grading 
+
+
+#!graders2=( "hiranmoy" "darindam" )
+   # 
+
+
+#!graders2toq=( [hiranmoy]="1 2" [darindam]=" 3 4 5" )
+   #
+
+
+#!graders2toc=( [hiranmoy]="RS23" [darindam]="RS07" )
+   #
+
+
+#--------- Resolving Team
+
+   # All mismatches will be resolved by this team
+   #
+
+
+#!resolvers=( "kvs-hiran" "vw-darindam" )             
+
+
+
+#!resolvers2toq=( [kvs-hiran]="1 2" [vw-darindam]=" 3 4 5" )                                             
+
+
+
+
+
+
+#!resolvers2toc=( [kvs-hiran]="E106" [vw-darindam]="E102" ) 
+
+
+
+
+
+
+# End of Help File for Project Configuring 

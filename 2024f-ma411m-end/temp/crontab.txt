@@ -1,0 +1,20 @@
+
+##########################################
+# srikanth entry: back up from SSD to HDD
+0 0 * * * /home/srikanth/root/backups/bu-hdd.sh >/dev/null 2>>/home/srikanth/root/backups/logfiles/bu-hdd.log
+##########################################
+
+##################################
+
+*/30 * * * * /home/srikanth/OneDrive/2024f-ma-411m/scripts/cron_syncNbuild.sh /home/srikanth/OneDrive/2024f-ma-411m/scripts    2>&1  #:darntex:2024f-ma-411m:
+
+# need to check if network is up
+#@reboot /home/srikanth/bin/iitgnetauth.sh
+#Back In Time system entry, this will be edited by the gui:
+0 0 * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 /usr/bin/backintime backup-job >/dev/null
+#Back In Time system entry, this will be edited by the gui:
+0 0 * * 7 /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 /usr/bin/backintime --profile-id 2 backup-job >/dev/null
+
+##############################
+####:sync-folder:2025s-ma-102:
+		*/15 * * * * /home/srikanth/OneDrive/2025s-ma-102/scripts/cron-sync.sh 				/home/srikanth/OneDrive/2025s-ma-102/scripts 				2>&1  #:sync-folder:2025s-ma-102:
