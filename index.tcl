@@ -2,6 +2,7 @@ package require Tk
 source /usr/share/tcltk/tk8.6/ttk/ttk.tcl
 
 
+
 set current_dir ""
 # Function to select a folder
 proc select_folder {} {
@@ -51,16 +52,18 @@ proc open_module_window {} {
 }
 
 # GUI Elements
+#font create myFont -family Arial -size 12 -weight bold
+font create myFont -family "TkHeadingFont" -size 12 -weight normal
 frame .top -padx 10 -pady 10
-label .top.loc_label -text "Project Location" 
-entry .top.loc_entry -width 40
-button .top.select_project -text "Select Project" -command select_folder
+label .top.loc_label -text "Project Location" -font myFont
+entry .top.loc_entry -width 40 -font largeFont
+button .top.select_project -text "Select Project" -command select_folder -font myFont
 pack .top.loc_label .top.loc_entry .top.select_project -side left -padx 5
 
 frame .bottom -padx 10 -pady 5
-label .bottom.module_label -text "Select Module"
-ttk::combobox .bottom.module_combo -width 30 -state disabled
-button .bottom.start_button -text "Start/Resume" -state disabled -command open_module_window
+label .bottom.module_label -text "Select Module" -font myFont
+ttk::combobox .bottom.module_combo -width 30 -state disabled -font largeFont
+button .bottom.start_button -text "Start/Resume" -state disabled -command open_module_window -font myFont
 pack .bottom.module_label .bottom.module_combo .bottom.start_button -side left -padx 5
 
 # Pack main frames after defining all elements
