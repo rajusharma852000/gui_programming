@@ -19,7 +19,8 @@ set main_file "$curr_dir/main.tex"
 set tex_file_sequence "$curr_dir/.TexFileSequence.csv" ;#Absolute path
 set last_compile_time 0
 set selected_position "T"
-set ::timer_id ""
+set ::comment_timer_id ""
+set ::marks_timer_id ""
 set has_unsaved_changes "false";
 
 
@@ -296,28 +297,42 @@ proc add_comment { new_comment} {
 }
 
 
-proc add_marks { } {
+
+
+
+proc add_marks { args } {
     global main_file has_unsaved_changes num_checkboxes  ;# Access global variables
     set has_unsaved_changes "true" ;# update the variable
     
-   
-    set new_marks ""
-    set sum 0;
-    for {set i 0} {$i < $num_checkboxes} {incr i} {
-    set varName "cbVar$i"  ;# Create the variable name dynamically
-    global $varName        ;# Declare it as a global variable
-    
-    if {[set $varName] == 1} {  ;# Access the variable value correctly
-        append new_marks "1+";
-        set sum [expr $sum + 1];
-    } else {
-        append new_marks "0+"
-    }
-}
 
-    set new_marks [string range $new_marks 0 end-1]
-    .marks.entry delete 0 end;
-    .marks.entry insert 0 $sum;
+    set new_marks ""
+    set sum 0
+    
+    
+    #calculate the new value of putMarks and total marks of the student
+    for {set i 0} {$i < $num_checkboxes} {incr i} {
+	 set varName "cbVar$i"   ;# Create the variable name dynamically
+	 global $varName         ;# Declare it as a global variable
+	 
+	 #Arguments are passed only if someone adds marks using marks entryField
+	 if { [llength $args] > 0 } {
+	     set new_marks  [lindex $args 0];
+	     set $varName 0 ;#Unmark all the checkboxes
+	 } else {
+	     append new_marks "[set $varName]+" ;# Get the actual value
+	     set sum [expr {$sum + [set $varName]}] ;# Get and add the actual value
+	 }
+    }
+    
+    #remove the trailing "+" only if checkbox to enter marks
+    if { ([llength $args] == 0) } {
+        set new_marks [string range $new_marks 0 end-1]
+	#Update the entry field
+        .marks.entry delete 0 end;
+        .marks.entry insert 0 $sum;
+    }
+    
+    
     
     # Open the file in read mode and read its content
     set fileId [open $main_file "r"]
@@ -347,15 +362,35 @@ proc add_marks { } {
 
 
 # Function to reset the timer
-proc reset_timer {} {
+proc update_comment_timer {} {
     global has_unsaved_changes   ;# Access global variables
     set has_unsaved_changes "true" ;# update the variable
     
     set new_comment [.comment.text get 1.0 end-1c]
     
-    after cancel $::timer_id  ; # Cancel any existing timer
-    set ::timer_id [after 750 [list add_comment $new_comment]]  ; # Set a new timer for 5 seconds
+    after cancel $::comment_timer_id  ; # Cancel any existing timer
+    set ::comment_timer_id [after 750 [list add_comment $new_comment]]  ; # Set a new timer for 0.750 seconds
 }
+
+
+# Function to reset the timer
+proc update_marks_timer {} {
+    global has_unsaved_changes   ;# Access global variables
+    set has_unsaved_changes "true" ;# update the variable
+    
+    set new_marks [.marks.entry get ]
+
+    # Check if new_marks is a valid non-negative integer
+    if { ![string is integer -strict $new_marks] || $new_marks < 0 } {
+        puts "Invalid entry: $new_marks"
+        return;
+    } 
+
+    
+    after cancel $::marks_timer_id  ; # Cancel any existing timer
+    set ::marks_timer_id [after 750 [list add_marks $new_marks]]  ; # Set a new timer for 0.750 seconds
+}
+
 
 
 
@@ -392,6 +427,35 @@ proc update_comment {args} {
 
 }
 
+
+#To determine the marks update source i.e. entryField or checkboxes
+proc is_manual_marks_entry { marks putmarks } {
+    #If markingScheme and putMarks differ in length,
+    #then marks were updated using marks entryField
+    if { [llength $marks] != [llength $putmarks] } {
+        return "yes";
+    } else {
+        # Split marks and putmarks by '+'
+        set putmarks_list [split $putmarks "+"];
+        set marks_list [split $marks "+"];
+        
+        # Get the size of the marks list (both lists should have the same size here)
+        set size [llength $marks_list]
+        
+        # Compare each element
+        for {set i 0 } { $i < $size } { incr i } {
+            if { ([lindex $putmarks_list $i] != [lindex $marks_list $i]) && ([lindex $putmarks_list $i] != 0) } {
+                return "yes"  ;# Marks were updated manually
+            }
+        }
+        
+        # If all values match, return "no"	
+        return "no";
+    }
+}
+
+
+
 proc update_marks { } {
     global curr_dir main_file
 
@@ -408,20 +472,34 @@ proc update_marks { } {
     set marks ""
     if {[regexp $marks_regex $content -> match]} {
         set marks $match; #1+1+1+1
+        set marks [regsub -all {\s+} $marks ""]  ;# Remove all the whitespace
+    }
+    
+    
+    #if marking is scheme is not present, disable the mark field
+    if { $marks eq "" } {
+        .marks.entry delete 0 end;                    ;# delete the value
+        .marks.entry configure -state disabled        ;# disable the button
+        .marks.label configure -foreground gray50     ;# Change label color
+    } else {
+        .marks.entry configure -state normal          ;# make the state normal
+        .marks.label configure -foreground black      ;# Restore original color
     }
 
     # Extract putmarks values for checkbox selection
     set putmarks ""
     if {[regexp $putmarks_regex $content -> put_match]} {
         set putmarks $put_match ;#1+0+1+1
+        set putmarks [regsub -all {\s+} $putmarks ""]  ;# Remove all the whitespace
     }
 
-    # Count occurrences of '1' in marks for checkboxes
+    # Count number of checkboxes to be created
     global num_checkboxes 0; 
-    set num_checkboxes [llength [regexp -all -inline {1} $marks]]
+    set num_checkboxes [llength [split $marks "+"]]  ;# number of checkboxes
 
-    # Parse putmarks string into a list
-    set putmarks_list [split $putmarks +]
+    # Parse putmarks and marks strings into a lists
+    set putmarks_list [split $putmarks +];
+    set marks_list [split $marks +];
 
     # Remove existing checkboxes
     foreach w [winfo children .marks] {
@@ -433,17 +511,30 @@ proc update_marks { } {
     set sum 0;
     # Create checkboxes dynamically
     for {set i 0} {$i < $num_checkboxes} {incr i} {
-        # Declare as a global variable
-        global cbVar$i
-        set cbVar$i 0  ;# Default unchecked
-        
-        if {[lindex $putmarks_list $i] == "1"} {
-            set cbVar$i 1  ;# Tick the checkbox if it's marked as 1
-            set sum  [expr $sum + 1]
-        }
+        set varName "cbVar$i"
+	global $varName
+	set $varName 0   ;# Default value is 0 (unchecked)
+
+	# Get the value from marks_list
+	set marks_val [lindex $marks_list $i] ; 
+	
+	#To determine the marks update source i.e. entryField or checkboxes
+	if { [is_manual_marks_entry $marks $putmarks] eq "yes" } {
+	    # Code for when marks were updated via the entry field
+	    set $varName 0 ;#Unmark the checkboxes
+	    set sum [lindex $putmarks_list 0]
+	} else {
+	    # Code for when marks were updated via checkboxes
+	    set putmark_val [lindex $putmarks_list $i] ; # Get the value from putmarks_list
+            if { $putmark_val != "0" } {
+	        set $varName $putmark_val  ;# Assign the actual value, 0 = unmarked, 0 < marked
+	        set sum [expr {$sum + $putmark_val}] ;#update the sum
+	    }
+	}
+	
 	
         # Use variable reference (global scope)
-        checkbutton .marks.cb$i -text "1" -variable cbVar$i -font myFont -command add_marks
+        checkbutton .marks.cb$i -text "$marks_val" -variable $varName -onvalue $marks_val -offvalue 0 -font myFont -command add_marks
         grid .marks.cb$i -row 0 -column [expr {$i + 2}] -padx 3
     }
     
@@ -465,6 +556,21 @@ proc create_pdf { } {
 
 
 
+# Open tex
+proc open_tex { } {
+    global curr_dir
+    
+    set tex_file_name [.top.id_combo get]
+    set tex_file_path "$curr_dir/$tex_file_name.tex"
+    
+    if {[file exists $tex_file_path]} {
+        exec xdg-open $tex_file_path &  ;# For Linux
+    } else {
+        tk_messageBox -message "File not found: $tex_file_path" -icon error
+    }
+}
+
+
 # Preview button functionality
 proc preview_tex {} {
     # Declaring global variables
@@ -482,12 +588,14 @@ proc preview_tex {} {
     # Update the last compile time
     set last_compile_time $current_time
     
-    
-    if {![catch {exec pgrep evince} result]} { 	;#If evince is already running, update the ui
-        puts "Preview is already available";
-        return;
-    }
 
+    # Check if evince is displaying main.pdf
+    if {![catch {exec pgrep -a evince} result]} {
+        if {[string match "*main.pdf*" $result]} {
+            puts "Preview is already available";
+            return
+        }
+    }
 	
     # Function call: Compile .tex into .pdf
     convert_tex_to_pdf "main"
@@ -570,6 +678,7 @@ frame .marks -padx 2 -pady 2
 label .marks.label -text "Marks" -font myFont
 entry .marks.entry -font myFont
 .marks.entry insert 0 0  ;#set default vaule as 0
+bind .marks.entry <KeyRelease> {update_marks_timer} ;# Bind the KeyRelease event to call update_comment_timer when the user types
 
 grid .marks.label -row 0 -column 0 -sticky w -padx {4 23}
 grid .marks.entry -row 0 -column 1 -sticky ew -padx 3
@@ -586,7 +695,7 @@ pack .marks -in .main -fill x
 frame .comment -padx 2 -pady 2 -relief flat
 label .comment.label -text "Comment" -font myFont
 text .comment.text -wrap word -height 5 -font myFont
-bind .comment.text <KeyRelease> {reset_timer} ;# Bind the KeyRelease event to call reset_timer when the user types
+bind .comment.text <KeyRelease> {update_comment_timer} ;# Bind the KeyRelease event to call update_comment_timer when the user types
 grid .comment.label -row 0 -column 0 -sticky nw -padx 5 -pady 2
 grid .comment.text -row 0 -column 1 -sticky nsew -padx 5 -pady 2
 grid columnconfigure .comment 1 -weight 1;# Expand row 0, col 1 => grow text box in height
@@ -604,8 +713,6 @@ pack .comment_placement -in .main -anchor w
 
 
 
-
-
 #**********************************************************************
 
 
@@ -620,7 +727,7 @@ pack .comment_placement -in .main -anchor w
 # Navigation Frame
 frame .nav -padx 5 -pady 2
 button .nav.prev -text "Previous" -command previous_tex -font myFont
-button .nav.open_tex -text "Open .tex" -font myFont
+button .nav.open_tex -text "Open_tex" -command open_tex -font myFont 
 button .nav.preview -text "Preview" -command preview_tex -font myFont
 button .nav.next -text "Next" -command next_tex -font myFont
 grid .nav.prev -row 0 -column 0 -sticky ew -padx 2
@@ -664,7 +771,6 @@ main
 if {[info exists tk_version]} {
     vwait forever
 }
-
 
 
 
