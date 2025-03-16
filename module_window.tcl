@@ -102,17 +102,7 @@ proc previous_tex {} {
     # Declaring global variables
     global tex_ids current_index  curr_dir has_unsaved_changes
     
-    #update the original file, if we have unsaved changes
-    if { $has_unsaved_changes eq "true" } {
-         set present_dir [pwd]
-         cd $curr_dir
-         set file1 [.top.id_combo get].tex
-         set result [compare_files $file1 main.tex]
-         if { $result eq "Yes" } {
-             exec cp main.tex $file1
-         } 
-         cd $present_dir
-    }
+    save_changes ;# Function call => save_changes => copy main.tex to curr_file.tex
     
     # Get the current time in seconds
     set current_time [clock seconds]
@@ -162,17 +152,7 @@ proc next_tex {} {
     # Declaring global variables
     global tex_ids current_index  has_unsaved_changes curr_dir
     
-    #update the original file, if we have unsaved changes
-    if { $has_unsaved_changes eq "true" } {
-         set present_dir [pwd]
-         cd $curr_dir
-         set file1 [.top.id_combo get].tex
-         set result [compare_files $file1 main.tex]
-         if { $result eq "Yes" } {
-             exec cp main.tex $file1
-         } 
-         cd $present_dir
-    }
+    save_changes ;# Function call => save_changes => copy main.tex to curr_file.tex
     
     # Get the current time in seconds
     set current_time [clock seconds]
@@ -366,7 +346,7 @@ proc update_comment_timer {} {
     global has_unsaved_changes   ;# Access global variables
     set has_unsaved_changes "true" ;# update the variable
     
-    set new_comment [.comment.text get 1.0 end-1c]
+    set new_comment [.right_comment.text get 1.0 end-1c]
     
     after cancel $::comment_timer_id  ; # Cancel any existing timer
     set ::comment_timer_id [after 750 [list add_comment $new_comment]]  ; # Set a new timer for 0.750 seconds
@@ -421,8 +401,8 @@ proc update_comment {args} {
     # Extract comments if they exist  
     if {[regexp $comment_regex $content -> match]} {
         set comment $match
-        .comment.text delete 1.0 end  ; # Clear the existing content in the text box
-        .comment.text insert end $comment  ; # Insert the new comment value
+        .right_comment.text delete 1.0 end  ; # Clear the existing content in the text box
+        .right_comment.text insert end $comment  ; # Insert the new comment value
     }
 
 }
@@ -628,114 +608,243 @@ proc check_pdf_generation {pdf_file} {
 
 
 
+proc kill_main_pdf {} {
+    catch {
+        set pid [exec pgrep -f "evince.*main.pdf"]
+        if {[string is digit $pid]} {
+            exec kill $pid
+        }
+    } result
+}
 
 
+# This is on_close funtion
+# It asks the user whether he wants to save the changes he has made in the program
+# Or want to close wihtout saving them
+proc on_close {} {
+    global has_unsaved_changes ;
+    
+    # IF no changes has been made, close the progam wihout taking re-confirmation 
+    if { $has_unsaved_changes eq "false" } {
+        kill_main_pdf;
+        exit 0
+    }
 
+    set response [tk_messageBox -type yesnocancel -icon question -title "Exit" \
+        -message "Do you want to save the changes before exiting?"]
 
+    if {$response == "yes"} {
+        save_changes  ;# Call your save function here
+        kill_main_pdf;
+        exit 0
+    } elseif {$response == "no"} {
+        kill_main_pdf
+        exit 0
+    } else {
+        return  ;# Do nothing, user canceled exit
+    }
+}
 
+proc save_changes {} {
+    # Declaring global variables
+    global has_unsaved_changes curr_dir
+    
+    #update the original file, if we have unsaved changes
+    if { $has_unsaved_changes eq "true" } {
+         set present_dir [pwd]
+         cd $curr_dir
+         set file1 [.top.id_combo get].tex
+         set result [compare_files $file1 main.tex]
+         if { $result eq "Yes" } {
+             exec cp main.tex $file1
+         } 
+         cd $present_dir
+    }
+}
 
-
-# Function call
+# Function call: clear everthing before the program starts
 clear_window  
+
+# Bind the close event: function call to "on_close" function
+wm protocol . WM_DELETE_WINDOW on_close
+
+
+
+# ****************************
+# Main Window Setup
+# ****************************
 
 # Title and Geometry
 wm title . "$module_folder"
 wm geometry . 400x227
 
-# Main Frame
+# Main Frame (Holds Everything)
 frame .main -padx 2 -pady 2
-pack .main -fill both -expand 1
+grid .main -row 0 -column 0 -sticky nsew
+
+# Ensure ".main" expands within the root window
+grid rowconfigure . 0 -weight 1
+grid columnconfigure . 0 -weight 1
 
 # Font Creation
-font create myFont -family "DejaVu Sans Mono" -size 12 -weight normal
+font create myFont -family "Helvetica" -size 12 -weight normal
 
 
 
+# ****************************
+# Top Frame (ID & Panel)
+# ****************************
 
-# Top Frame
 frame .top -padx 2 -pady 2
+
+# Labels & Comboboxes for ID and Panel
 label .top.id_label -text "ID" -font myFont
 ttk::combobox .top.id_combo -values $tex_ids -font myFont
-if {$current_index >= 0} {
-    .top.id_combo set [lindex $tex_ids $current_index]
-}
+.top.id_combo set [lindex $tex_ids 0] ;# Set first file name as default value
 label .top.panel_label -text "Pane" -font myFont
 ttk::combobox .top.panel_combo -values {1 2} -font myFont
-.top.panel_combo insert 0 1 ;#set default vaule as 1
+.top.panel_combo insert 0 1 ;#set default vaule for Panel Combo (default: 1)
+
+# Positioning Components
 grid .top.id_label -row 0 -column 0 -sticky w -padx {3 48}
 grid .top.id_combo -row 0 -column 1 -sticky ew -padx 3
 grid .top.panel_label -row 0 -column 2 -sticky w -padx 3
 grid .top.panel_combo -row 0 -column 3 -sticky ew -padx 3
-grid columnconfigure .top {1 3} -weight 1
-pack .top -in .main -fill x
+
+# Ensure Combo Boxes Expand in Width
+grid columnconfigure .top 1 -weight 1
+grid columnconfigure .top 3 -weight 1
+
+# Attach Top Frame to Main Layout
+grid .top -in .main -row 0 -column 0 -sticky new
+grid rowconfigure .main 0 -weight 0
+grid columnconfigure .main 0 -weight 1
 
 
 
 
 
-# Marks Frame
+# ****************************
+# Marks Frame (Marks Entry)
+# ****************************
+
 frame .marks -padx 2 -pady 2
+
+# Marks Label & Entry
 label .marks.label -text "Marks" -font myFont
 entry .marks.entry -font myFont
-.marks.entry insert 0 0  ;#set default vaule as 0
-bind .marks.entry <KeyRelease> {update_marks_timer} ;# Bind the KeyRelease event to call update_comment_timer when the user types
 
+# Set Default Value for Marks Entry
+.marks.entry insert 0 0  
+
+# Bind the KeyRelease event to call update_comment_timer when the user types
+bind .marks.entry <KeyRelease> {update_marks_timer} ;
+
+# Positioning Components
 grid .marks.label -row 0 -column 0 -sticky w -padx {4 23}
 grid .marks.entry -row 0 -column 1 -sticky ew -padx 3
+
+# Ensure Entry Expands in Width
 grid columnconfigure .marks 1 -weight 1
-pack .marks -in .main -fill x
+
+# Attach Marks Frame to Main Layout
+grid .marks -in .main -row 1 -column 0 -sticky new
+grid columnconfigure .main 0 -weight 1
 
 
 
 
 
 
-#**********************************************************************
-# Comment Frame
-frame .comment -padx 2 -pady 2 -relief flat
-label .comment.label -text "Comment" -font myFont
-text .comment.text -wrap word -height 5 -font myFont
-bind .comment.text <KeyRelease> {update_comment_timer} ;# Bind the KeyRelease event to call update_comment_timer when the user types
-grid .comment.label -row 0 -column 0 -sticky nw -padx 5 -pady 2
-grid .comment.text -row 0 -column 1 -sticky nsew -padx 5 -pady 2
-grid columnconfigure .comment 1 -weight 1;# Expand row 0, col 1 => grow text box in height
-grid rowconfigure .comment 0 -weight 1  ;# Expand row 0 => grow text box in width
-pack .comment -in .main -fill both -expand 1 ;# Grow comment frame both in height and width
-grid rowconfigure .main 0 -weight 1
+# ****************************
+# Comment Section
+# ****************************
 
+# Comment Frame (Holds Left & Right Comments)
+frame .comment -padx 2 -pady 2 
 
-# Comment Placement Frame
-frame .comment_placement -padx 5 -pady 2
-ttk::combobox .comment_placement.dropdown -values {T M B C} -width 5 -textvariable selected_position -font myFont
+# Left Comment Frame (Fixed Width, Expands in Height)
+frame .left_comment -padx 2 -pady 2 -relief solid 
+grid .left_comment -in .comment -row 0 -column 0 -sticky ns
+
+# Ensure Left Comment Grows in Height Only
+grid rowconfigure .comment 0 -weight 1
+grid columnconfigure .comment 0 -weight 0
+
+# Left Comment Contents
+label .left_comment.label -text "Comment" -font myFont 
+grid .left_comment.label -row 1 -column 0 -sticky w -padx 3 -pady 2
+
+ttk::combobox .left_comment.dropdown -values {T M B C} -width 5 -textvariable selected_position -font myFont
 trace add variable selected_position write update_comment ;# Trace the variable to call update_comment when it changes
-grid .comment_placement.dropdown -row 0 -column 0 -sticky w -padx 5
-pack .comment_placement -in .main -anchor w
+grid .left_comment.dropdown -row 3 -column 0 -sticky w -padx 3 -pady 2
+
+button .left_comment.myButton1 -text "See Errors" -font myFont -width 8 -height 1
+grid .left_comment.myButton1 -row 4 -column 0 -sticky w -padx 3 -pady 2
+
+# Ensure Space Above & Below the Label Expands
+grid rowconfigure .left_comment {0 2} -weight 1
+grid rowconfigure .left_comment {1 3 4} -weight 0
+grid columnconfigure .left_comment 0 -weight 0
+
+
+# Right Comment Frame (Expands in Both Width & Height)
+frame .right_comment -padx 5 -pady 5 
+grid .right_comment -in .comment -row 0 -column 1 -sticky nsew
+
+# Ensure Right Comment Grows Fully
+grid columnconfigure .comment 1 -weight 1
+grid rowconfigure .comment 0 -weight 1
+
+# Textbox Inside Right Comment (Captures 100% Space)
+text .right_comment.text -wrap word -height 5 -width 40 -font myFont
+grid .right_comment.text -row 0 -column 0 -sticky nsew
+bind .right_comment.text <KeyRelease> {update_comment_timer} 
+
+# Ensure Textbox Expands Fully
+grid rowconfigure .right_comment 0 -weight 1
+grid columnconfigure .right_comment 0 -weight 1
+
+# Attach Comment Frame to Main Layout
+grid .comment -in .main -row 2 -column 0 -sticky nsew
+grid columnconfigure .main 0 -weight 1
+grid rowconfigure .main 2 -weight 1
 
 
 
-#**********************************************************************
 
 
 
 
 
 
+# ****************************
+# Navigation Section
+# ****************************
 
+frame .nav -padx 5 -pady 2 
 
-
-
-# Navigation Frame
-frame .nav -padx 5 -pady 2
+# Navigation Buttons
 button .nav.prev -text "Previous" -command previous_tex -font myFont
 button .nav.open_tex -text "Open_tex" -command open_tex -font myFont 
 button .nav.preview -text "Preview" -command preview_tex -font myFont
 button .nav.next -text "Next" -command next_tex -font myFont
+
+# Position Buttons (Grow in Width, Fixed Height)
 grid .nav.prev -row 0 -column 0 -sticky ew -padx 2
 grid .nav.open_tex -row 0 -column 1 -sticky ew -padx 2
 grid .nav.preview -row 0 -column 2 -sticky ew -padx 2
 grid .nav.next -row 0 -column 3 -sticky ew -padx 2
+
+# Ensure All Buttons Expand Equally
 grid columnconfigure .nav {0 1 2 3} -weight 1
-pack .nav -in .main -fill x -side bottom  ;# Keep navigation at bottom
+
+# Attach Navigation Frame at the Bottom
+grid .nav -in .main -row 3 -column 0 -sticky ew 
+
+# Ensure Nav Row Does NOT Expand in Height
+grid rowconfigure .main 3 -weight 0
+grid columnconfigure .main 0 -weight 1
 
 
 
