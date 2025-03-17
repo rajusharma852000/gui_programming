@@ -360,9 +360,9 @@ proc update_marks_timer {} {
     
     set new_marks [.marks.entry get ]
 
-    # Check if new_marks is a valid non-negative integer
-    if { ![string is integer -strict $new_marks] || $new_marks < 0 } {
-        puts "Invalid entry: $new_marks"
+    # Check if new_marks is a valid floating point number
+    if { ![string is double -strict $new_marks] } {
+         puts "Invalid entry: $new_marks is not a number"
         return;
     } 
 
