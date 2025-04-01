@@ -1,13 +1,7 @@
 package require Tk
-source /usr/share/tcltk/tk8.6/ttk/ttk.tcl
-
-
 
 set current_dir ""
-#set attached_file "module_window.tcl";
-#set attached_file "Ankur_module_window.tcl";
-#set attached_file "Ankur_module_window_2.tcl";
-set attached_file "Raju_module_window.tcl";
+set attached_file "module_window.tcl";
 
 
 # Function to select a folder
@@ -32,26 +26,33 @@ proc select_folder {} {
         set last_selected_dir [pwd] ;# Default to current directory
     }
     
-    # Open directory chooser starting from last remembered locatiohn
-    #set selected_dir [tk_chooseDirectory -title "Select Project Folder" -initialdir $last_selected_dir]
-    if {[catch {exec zenity --file-selection --directory --title "Select Project Folder" --filename "$last_selected_dir/" --width=800 --height=600} selected_dir]} {
-        set selected_dir ""
+    # Make sure last_selected_dir exist
+    if { ![file isdirectory $last_selected_dir] } {
+    	set last_selected_dir [pwd];
     }
-
-    if { $selected_dir ne "" } {
-        set current_dir $selected_dir
+    
+    # Open directory chooser starting from last remembered locatiohn
+    set selected_dir [tk_chooseDirectory -title "Select Project Folder" -initialdir $last_selected_dir]
+    
+    # if user do not select directory, stop further execution	
+    if { $selected_dir eq "" } {
+        puts "Please select a directory";
+        return;
+    }
+    
+    # store the selected_dir for future use
+    set current_dir $selected_dir
         
-        #Save selected directory to file
-        set fp [open $last_dir_file w]
-        puts $fp $selected_dir
-        close $fp
+    #Save selected directory to file
+    set fp [open $last_dir_file w]
+    puts $fp $selected_dir
+    close $fp
         
         
-        if { [load_modules $current_dir] == 1 } {
-            .top.loc_entry delete 0 end
-            .top.loc_entry insert 0 $current_dir
-            .top.loc_entry xview moveto 1 
-        }
+    if { [load_modules $current_dir] == 1 } {
+        .top.loc_entry delete 0 end
+        .top.loc_entry insert 0 $current_dir
+        .top.loc_entry xview moveto 1 
     }
 }
 
@@ -89,14 +90,15 @@ proc open_module_window {} {
     # Close the main index window
     global current_dir  attached_file;
     set module_folder "[.bottom.module_combo get]"
-    destroy .
-    exec wish $attached_file "$current_dir/$module_folder" &
+    #destroy .
+    exec wish $attached_file $current_dir $module_folder &
 }
 
 
 
 # GUI Elements
 #wm geometry . 400x227
+wm title . "autog"
 
 # Main Frame (Holds Everything)
 frame .main -padx 0 -pady 0
@@ -144,8 +146,4 @@ grid columnconfigure .main 0 -weight 1
 
 
 
-# Run GUI event loop
-if {[info exists tk_version]} {
-    vwait forever
-}
 
