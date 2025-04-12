@@ -9,23 +9,26 @@ set module_folder [lindex $argv 1]   ;# Get the module/question name
 set curr_dir [file join $current_folder $module_folder];
 set main_file "$curr_dir/main.tex";
 set tex_file_sequence "$curr_dir/.TexFileSequence.csv" ;#Absolute path
-set last_compile_time 0;
 set selected_position "T";
 set ::comment_timer_id "";
 set ::marks_timer_id "";
 set has_unsaved_changes "false";
 set error_message "";
+set configFile "$current_folder/.Settings.config";
+set logs "";
+
 
 #**************
 #pane
-set selected_pane ""
-set max_panes 1
-set pane_values {1}
+set selected_pane 1;
+set max_panes 1;
+set pane_values {1};
 set mainFileContent "";
 set pane1FileContent "";
 set pane2FileContent "";
 
 #***************
+
 
 
 
@@ -62,16 +65,40 @@ if { [llength $tex_list] > 0 } {
 
 
 
+#***************
+#ID
+set originalOptions $tex_list
+set filteredOptions $originalOptions
+set searchQuery [lindex $filteredOptions 0]
+set lastQuery [lindex $filteredOptions 0]
+set dropdownVisible false
+
+#***************
+
+#**************
+#logs
+set logs_expanded false
+#*************
+
+
+
+
+
+
 proc update_ui {} {
     global curr_dir;
     
-    #create variable 
-    convert_tex_to_pdf	;#function call
+    #create variable: function call
+    convert_tex_to_pdf	;
 }
 
 proc update_widget {tex_list current_index} {
-        set file_name [lindex $tex_list $current_index] 	;#get the name of the file from the list
-        .top.id_combo set $file_name 				;#update the value of ID field
+	#Access global variables
+        global searchQuery lastQuery
+        
+        set file_name [lindex $tex_list $current_index] 	;#get filename from list
+        set searchQuery $file_name 
+        set lastQuery $file_name				
 	create_main
 	update_pane          
         update_comment                                  	;# function call
@@ -128,6 +155,8 @@ proc previous_tex {} {
         incr current_index -1			
 
         #update widget
+        add_Activity "Moved to previous file";
+        update_activity
         update_widget $tex_list $current_index
         
         # udpate ui
@@ -158,6 +187,8 @@ proc next_tex {} {
         incr current_index 1;
         
         #update widget
+        add_Activity "Moved to next file";
+        update_activity
         update_widget $tex_list $current_index
         
         # udpate ui
@@ -361,6 +392,8 @@ proc add_comment { new_comment} {
 
     # Compile the tex file into PDF
     update_ui ;# Function call: update_ui 
+    add_Activity "Comment updated";
+    update_activity
 }
 
 
@@ -450,6 +483,8 @@ proc add_marks { args } {
     
     # Compile the tex file into PDF
     update_ui ;# Function call: update_ui 
+    add_Activity "Marks updated";
+    update_activity
 }
 
 
@@ -489,9 +524,9 @@ proc update_marks_timer {} {
 
 
 proc create_main {} {
-    global curr_dir main_file mainFileContent pane1FileContent pane2FileContent;
+    global curr_dir main_file mainFileContent pane1FileContent pane2FileContent searchQuery logs;
     
-    set tex_file_name [.top.id_combo get];
+    set tex_file_name $searchQuery;
     set tex_file_path "$curr_dir/$tex_file_name.tex"
     
     # Check if file exists
@@ -503,6 +538,7 @@ proc create_main {} {
     set mainFileContent [read_from_file $main_file];
     set noOfPanes [count_panes];
     set pane1FileContent [read_pane 1]
+
     if { $noOfPanes == 2 } {
         set pane2FileContent [read_pane 2]
     }
@@ -567,6 +603,9 @@ proc update_comment {args} {
         .right_comment.text delete 1.0 end  ; # Clear the existing content if no match is found
         puts "No valid comment found."
     }
+    
+    #highlight the syntax: function call
+    highlight_latex_syntax;
 
 }
 
@@ -724,9 +763,9 @@ proc update_marks { } {
 
 # Open tex
 proc open_tex { } {
-    global curr_dir
+    global curr_dir searchQuery;
     
-    set tex_file_name [.top.id_combo get]
+    set tex_file_name $searchQuery
     set tex_file_path "$curr_dir/$tex_file_name.tex"
     
     if {[file exists $tex_file_path]} {
@@ -734,6 +773,9 @@ proc open_tex { } {
     } else {
         tk_messageBox -message "File not found: $tex_file_path" -icon error -title "Error"
     }
+    
+     add_Activity "Opened $searchQuery.tex";
+     update_activity
 }
 
 
@@ -752,6 +794,8 @@ proc preview_tex {} {
 	
     # Function call: Compile main.tex into main.pdf
     convert_tex_to_pdf
+    add_Activity "Generate preview";
+    update_activity
 
     # Get generated PDF file
     set pdf_file "$curr_dir/build/main.pdf"
@@ -826,13 +870,12 @@ proc on_close {} {
 
 proc save_changes {} {
     # Declaring global variables
-    global has_unsaved_changes curr_dir
-    
+    global has_unsaved_changes curr_dir searchQuery mainFileContent; 
     #update the original file, if we have unsaved changes
     if { $has_unsaved_changes eq "true" } {
          set present_dir [pwd]
          cd $curr_dir
-         set file1 [.top.id_combo get].tex
+         set file1 $searchQuery.tex
          set result [compare_files $file1 main.tex]
          if { $result eq "Yes" } {
              exec cp main.tex $file1
@@ -845,9 +888,9 @@ proc save_changes {} {
 
 
 proc showError { } {
-    global error_message;
+    global error_message searchQuery;
     if { $error_message eq "" } return ;
-    set filename [.top.id_combo get].tex
+    set filename $searchQuery;
     
     set message "Compile command: \npdflatex -file-line-error -interaction=nonstopmode -output-directory=build $filename \n\n Errors: \n $error_message"
     tk_messageBox -message "$message" -icon error -title "Errors";
@@ -944,13 +987,13 @@ proc update_pane {} {
 
 # Function to handle selection change
 proc on_combobox_select {} {
-    global current_index tex_list;
+    global current_index tex_list searchQuery;
     
     # if any error, do not allow moving from current page
     if { [is_error] eq "true" } return;
 
     # Get selected value from the combobox
-    set selected_id [.top.id_combo get]
+    set selected_id $searchQuery
 
     # Save current page changes
     save_changes;
@@ -969,10 +1012,13 @@ proc on_combobox_select {} {
 
 # Function to navigate to the selected page
 proc go_to_page {page_id} {
-   global current_index tex_list;  
+   global current_index tex_list searchQuery;  
      
      
    if {$current_index < [expr {[llength $tex_list] - 1}] && $current_index > 0} {
+        #update activity.log
+	add_Activity "Switched to $searchQuery.tex";
+	update_activity;
 	# update widget
 	update_widget $tex_list $current_index;
 
@@ -987,30 +1033,365 @@ proc go_to_page {page_id} {
 
 
 
-proc filter_combobox {event} {
-    global tex_list
 
-    set input [.top.id_combo get]  ;# Get the current text from combobox
-    set filtered_list [list]
-    if {$event eq "click"} {
-	# If clicked, show the full list
-	set filtered_list $tex_list
-    } else {
-	# If typing, filter the list based on input
-	foreach item $tex_list {
-	    if {[string match "*$input*" $item]} {
-	        lappend filtered_list $item
-	    }
-	}
+
+
+
+
+
+# Procedure to highlight LaTeX syntax
+proc highlight_latex_syntax {} {
+    set text_widget .right_comment.text
+
+    # Remove old tags
+    $text_widget tag remove latexCommand 1.0 end
+    $text_widget tag remove mathMode 1.0 end
+
+    # Get all content
+    set content [$text_widget get 1.0 end]
+
+    # Match LaTeX commands like \frac, \begin, \alpha
+    set command_regex {\\[a-zA-Z]+}
+    foreach match [regexp -all -inline -indices $command_regex $content] {
+        foreach {start end} $match {
+            set startIdx [$text_widget index "1.0 + $start chars"]
+            set endIdx   [$text_widget index "1.0 + [expr {$end + 1}] chars"]
+            $text_widget tag add latexCommand $startIdx $endIdx
+        }
     }
 
-    # Update combobox values dynamically
-    .top.id_combo configure -values $filtered_list
+    # Match math mode regions like $...$
+    set math_regex {\$[^$]+\$}
+    foreach match [regexp -all -inline -indices $math_regex $content] {
+        foreach {start end} $match {
+            set startIdx [$text_widget index "1.0 + $start chars"]
+            set endIdx   [$text_widget index "1.0 + [expr {$end + 1}] chars"]
+            $text_widget tag add mathMode $startIdx $endIdx
+        }
+    }
+}
 
-    # Manually open the dropdown
-    after 100 { event generate .top.id_combo <Down> }
+
+proc load_shortcuts {filename} {
+    set shortcuts [dict create]
+    if {[file exists $filename]} {
+        set fileId [open $filename r]
+        while {[gets $fileId line] >= 0} {
+            set line [string trim $line]
+
+            # Skip comments and empty lines
+            if {$line eq "" || [string match "#*" $line]} {
+                continue
+            }
+
+            # Only accept lines like "copy=Control-c", not "key:value"
+            if {[regexp {^([^:=\s]+)=([^\s]+)} $line -> key value]} {
+                dict set shortcuts $key $value
+            }
+        }
+        close $fileId
+    }
+    return $shortcuts
+}
+
+
+
+
+
+#***************************************************************
+#ID Search Box
+
+# Function to update the dropdown options based on search input
+proc updateDropdown {} {
+    global searchQuery originalOptions filteredOptions dropdownVisible
+
+    set keyword [string tolower $searchQuery]
+
+    set filteredOptions [list]
+    foreach option $originalOptions {
+        if {[string match "*$keyword*" [string tolower $option]] || $keyword eq ""} {
+            lappend filteredOptions $option
+        }
+    }
+
+    if {[llength $filteredOptions] == 0} {
+        lappend filteredOptions "No result found"
+    }
+
+    .dropdownFrame.dropdown delete 0 end
+    foreach option $filteredOptions {
+        .dropdownFrame.dropdown insert end $option
+    }
+
+    # Adjust height between 1 and 5
+    set numResults [llength $filteredOptions]
+    if {$numResults < 10} {
+        .dropdownFrame.dropdown configure -height $numResults
+    } else {
+        .dropdownFrame.dropdown configure -height 10
+    }
+     
+     # Get position and size of .top1.search relative to root window
+     set x [expr {[winfo x .top] + [winfo x .top1] + [winfo x .top1.search]}]
+     set y [expr {[winfo y .top] + [winfo y .top1] + [winfo y .top1.search] + [winfo height .top1.search]}]
+     set w [expr {[winfo width .top1.search] + 19 }]
     
+     # Adjust height of listbox
+    if {$keyword ne "" && ![winfo ismapped .dropdownFrame]} {
+        place .dropdownFrame -x $x -y $y -width $w
+        .top1.toggleButton configure -text "\u25B2" ;#up arrow
+        set dropdownVisible true
+    }
+}
 
+proc resetDropdown {} {
+    global filteredOptions originalOptions
+
+    # Reset search and filtered list
+    set filteredOptions $originalOptions
+
+    # Clear and repopulate the dropdown
+    .dropdownFrame.dropdown delete 0 end
+    foreach option $filteredOptions {
+        .dropdownFrame.dropdown insert end $option
+    }
+}
+
+# Function to toggle the visibility of the listbox
+proc toggleDropdown {} {
+    global dropdownVisible
+
+    if {$dropdownVisible} {
+        place forget .dropdownFrame
+        .top1.toggleButton configure -text "\u25BC" ;# down arrow
+        set dropdownVisible false
+    } else {
+        # Reset filtered list
+        resetDropdown
+	
+	# Get position and size of .top1.search relative to root window
+        set x [expr {[winfo x .top] + [winfo x .top1] + [winfo x .top1.search]}]
+        set y [expr {[winfo y .top] + [winfo y .top1] + [winfo y .top1.search] + [winfo height .top1.search]}]
+        set w [expr {[winfo width .top1.search] + 19 }]
+        
+	 # Adjust height of listbox
+        set numResults [llength $::filteredOptions]
+        if {$numResults < 10} {
+            .dropdownFrame.dropdown configure -height $numResults
+        } else {
+            .dropdownFrame.dropdown configure -height 10
+        }
+        
+        
+
+        # Place the dropdown just below the search box
+        place .dropdownFrame -x $x -y $y -width $w
+        # Show the dropdown
+        .top1.toggleButton configure -text "\u25B2" ;#up arrow
+        set dropdownVisible true
+    }
+}
+
+# Function to handle selection from the dropdown
+proc handleSelection {} {
+    global searchQuery dropdownVisible lastQuery current_index tex_list
+
+    set selectedIndices [.dropdownFrame.dropdown curselection]
+    if {[llength $selectedIndices] > 0} {
+        set selectedValue [.dropdownFrame.dropdown get [lindex $selectedIndices 0]]
+        if {$selectedValue eq "No result found"} {
+            return
+        }
+        set searchQuery $selectedValue
+        set lastQuery $selectedValue
+        set current_index [lsearch -exact $tex_list $selectedValue]
+        place forget .dropdownFrame
+        .top1.toggleButton configure -text "\u25BC" ;# down arrow
+        set dropdownVisible false
+        
+        # Call on_combobox_select
+        on_combobox_select
+    }
+}
+
+proc closeDropdownIfNeeded {widget} {
+    global dropdownVisible filteredOptions searchQuery lastQuery
+    
+    # List of widgets that should update the entry field
+    set allowlist1 [list .top1.search .dropdownFrame .dropdownFrame.dropdown .dropdownFrame.scroll]
+    if {[winfo exists $widget] && [lsearch -exact $allowlist1 $widget] == -1} {
+	set searchQuery $lastQuery;
+    }
+    
+    # List of widgets that should NOT close the dropdown
+   set allowlist2 [list .top1.toggleButton .top1.search .dropdownFrame .dropdownFrame.dropdown .dropdownFrame.scroll]
+
+    # Check if the widget is NOT in the allowlist
+    if {[winfo exists $widget] && [lsearch -exact $allowlist2 $widget] == -1} {
+        if {[winfo ismapped .dropdownFrame]} {
+            # Hide dropdown
+            place forget .dropdownFrame
+            .top1.toggleButton configure -text "\u25BC" ;# down arrow
+            set dropdownVisible false
+        }
+    }
+}
+
+
+
+
+#****************************************************************
+
+
+
+proc add_Activity { new_message } {
+    # Access global variables
+    global curr_dir searchQuery;
+
+    # Get current time in GMT
+    set timestamp [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S GMT" -gmt 1]
+    
+    set message "Path: $curr_dir,  Filename: $searchQuery.tex,  Message: $new_message";
+    # Combine timestamp and message
+    set log_entry "Time: $timestamp,  $message";
+ 
+    # Append to log file
+    set log_file "$curr_dir/build/activity.log";
+    set fp [open $log_file a];
+    puts $fp $log_entry;
+    close $fp;
+}
+
+# Update activity display logic
+proc update_activity {} {
+    global logs ::logs_expanded
+    set logs [getLastThreeTimeMessages]
+    set numLogs [llength $logs]
+
+    # Always show the first log if available
+    if {$numLogs >= 1} {
+        .log.log0 configure -text [lindex $logs 0]
+        grid .log.log0
+    } else {
+        .log.log0 configure -text ""
+        grid remove .log.log0
+    }
+    
+    if {$numLogs > 1 } {
+        grid .log.toggle_btn -row 3 -column 0 -sticky ew -padx 2 -pady 2;
+    } else {
+        grid remove .log.toggle_btn;
+    }
+
+    # Show/hide the rest based on toggle flag
+    if {$::logs_expanded} {
+        if {$numLogs >= 2} {
+            .log.log1 configure -text [lindex $logs 1]
+            grid .log.log1
+        }
+        if {$numLogs >= 3} {
+            .log.log2 configure -text [lindex $logs 2]
+            grid .log.log2
+        }
+    } else {
+        grid remove .log.log1
+        grid remove .log.log2
+    }
+}
+
+# Toggle logs
+proc toggle_logs {} {
+    global logs_expanded
+
+    # Flip the toggle state
+    set logs_expanded [expr {!$logs_expanded}]
+
+    # Update the button text
+    if {$logs_expanded} {
+        .log.toggle_btn configure -text "Show Less \u25B2"
+    } else {
+        .log.toggle_btn configure -text "Show More \u25BC"
+    }
+
+    # Refresh the labels accordingly
+    update_activity
+}
+
+proc getLastNLines {filename n} {
+    set f [open $filename "r"]
+    fconfigure $f -translation binary
+
+    # Seek to near the end of the file
+    set fileSize [file size $filename]
+    set chunkSize 4096  ;# Read last 4 KB
+    set offset [expr {$fileSize > $chunkSize ? $fileSize - $chunkSize : 0}]
+    seek $f $offset
+
+    set data [read $f]
+    close $f
+
+    # Split into lines and remove any empty ones
+    set lines [filterNonEmpty [split $data "\n"]]
+
+    # If file doesn't end in a newline, the last line may be incomplete. Adjust as needed.
+    set lastN [lrange $lines end-[expr {$n-1}] end]
+    return $lastN
+}
+
+proc getLastThreeTimeMessages {} {
+    # Access global variables
+    global curr_dir searchQuery;
+    set logfile "$curr_dir/build/activity.log";
+    
+    # Read more than 3 lines to be safe
+    set lines [getLastNLines $logfile 10]
+    set results {}
+
+    # Iterate over the lines in reverse order to get the last 3 entries
+    foreach line [lreverse $lines] {
+        if {[string match "Time:*Message:*" $line]} {
+            set tokens [split $line ","]
+            set timePart ""
+            set message ""
+            
+            # Split the line into tokens and extract time and message
+            foreach token $tokens {
+                set token [string trim $token]
+                if {[string match "Time:*" $token]} {
+                    set timePart [string range $token 6 end]
+                } elseif {[string match "Message:*" $token]} {
+                    set message [string range $token 9 end]
+                }
+            }
+
+            if {$timePart ne "" && $message ne ""} {
+                # Extract the time with hours, minutes, and seconds
+                set timeTokens [split $timePart " "]
+                set clockPart [lindex $timeTokens 1]  ;# Time is after the date part
+                lappend results "$clockPart $message"
+            }
+        }
+
+        # Break the loop once we have 3 entries
+        if {[llength $results] == 3} {
+            break
+        }
+    }
+    
+    return $results
+}
+
+
+
+# Helper to filter empty lines
+proc filterNonEmpty {lst} {
+    set result {}
+    foreach item $lst {
+        if {[string trim $item] ne ""} {
+            lappend result $item
+        }
+    }
+    return $result
 }
 
 
@@ -1024,29 +1405,13 @@ proc filter_combobox {event} {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-#****************************************************************
-
-
-
 # ****************************
 # Main Window Setup
 # ****************************
 
 # Title and Geometry
 wm title . "$module_folder"
-wm geometry . 430x227
+wm geometry . 430x310
 
 # Bind the close event: function call to "on_close" function
 wm protocol . WM_DELETE_WINDOW on_close
@@ -1075,20 +1440,20 @@ frame .top -padx 2 -pady 2
 # Labels & Comboboxes for ID and Panel
 #***************************
 #1. ID
+
+#lable
 label .top.id_label -text "ID" -font myFont
-ttk::combobox .top.id_combo -values $tex_list -font myFont -width 35  -style Custom.TCombobox
-.top.id_combo set [lindex $tex_list 0] ;# Set first file name as default value
-# Bind combobox selection change to event
-bind .top.id_combo <<ComboboxSelected>> {on_combobox_select}
-# Bind Enter key to trigger filtering while typing
-bind .top.id_combo <KeyRelease> {filter_combobox "type"}
-# Manually trigger dropdown when clicking on the arrow button
-bind .top.id_combo <ButtonPress-1> {
-    if {[winfo pointerx .] > [expr {[winfo rootx .top.id_combo] + [winfo width .top.id_combo] - 20}]} {
-        event generate .top.id_combo <Down>
-        filter_combobox "click" ;#function call
-    }
-}
+
+frame .top1 -padx 0 -pady 0;
+# Create the search input
+entry .top1.search -textvariable searchQuery -width 35
+grid .top1.search -row 0 -column 0 -sticky ew -padx 0 -pady 0
+
+# Create the toggle button
+button .top1.toggleButton -text "\u25BC" -width 1 -height 1 -padx 5 -pady 0 -command {toggleDropdown}
+grid .top1.toggleButton -row 0 -column 1 -padx {0 3} -pady 0 -sticky ew
+
+
 #end ID
 #***************************
 
@@ -1104,13 +1469,14 @@ trace add variable selected_pane write on_selected_tab_change;
 
 # Positioning Components
 grid .top.id_label -row 0 -column 0 -sticky w -padx {3 80}
-grid .top.id_combo -row 0 -column 1 -sticky ew -padx 3
+grid .top1 -in .top -row 0 -column 1 -sticky ew
 grid .top.panel_label -row 0 -column 2 -sticky w -padx 3
 grid .top.panel_combo -row 0 -column 3 -sticky ew -padx 3
 
 # Ensure Combo Boxes Expand in Width
 grid columnconfigure .top 1 -weight 1
 grid columnconfigure .top 3 -weight 1
+grid columnconfigure .top1 0 -weight 1
 
 # Attach Top Frame to Main Layout
 grid .top -in .main -row 0 -column 0 -sticky new
@@ -1194,12 +1560,18 @@ grid columnconfigure .comment 1 -weight 1
 grid rowconfigure .comment 0 -weight 1
 
 # Textbox Inside Right Comment (Captures 100% Space)
-text .right_comment.text -wrap word -height 5 -width 40 -font myFont
+text .right_comment.text -wrap word -height 5 -width 40 -font myFont -undo 1
 grid .right_comment.text -row 0 -column 0 -sticky nsew
-bind .right_comment.text <KeyRelease> {update_comment_timer} 
+
+# Define tag styles
+.right_comment.text tag configure latexCommand -foreground blue
+.right_comment.text tag configure mathMode -foreground green
+
+# Bind a key release event to trigger highlighting and update_comment
+bind .right_comment.text <KeyRelease> {highlight_latex_syntax; update_comment_timer;}
 
 # Ensure Textbox Expands Fully
-grid rowconfigure .right_comment 0 -weight 1
+grid rowconfigure .right_comment 0 -weight 1 
 grid columnconfigure .right_comment 0 -weight 1
 
 # Attach Comment Frame to Main Layout
@@ -1208,8 +1580,31 @@ grid columnconfigure .main 0 -weight 1
 grid rowconfigure .main 2 -weight 1
 
 
-
-
+# Apply bindings from the config
+set keymap [load_shortcuts $configFile]
+foreach {action keyseq} $keymap {
+    switch -- $action {
+        undo {
+            bind .right_comment.text <$keyseq> {
+                event generate .right_comment.text <<Undo>>
+            }
+        }
+        redo {
+            bind .right_comment.text <$keyseq> {
+                event generate .right_comment.text <<Redo>>
+                break;
+                
+            }
+        }
+        selectall {
+            bind .right_comment.text <$keyseq> {
+       		.right_comment.text tag add sel 1.0 end-1c
+                break
+            }
+        }
+       
+    }
+}
 
 
 
@@ -1245,6 +1640,107 @@ grid columnconfigure .main 0 -weight 1
 
 
 
+# ****************************
+# Activity Section
+# ****************************
+
+# Create the frame with padding
+frame .log -padx 5 -pady 2
+
+# Adjust the font size to fit the widget (you may need to fine-tune this based on your content)
+set myFont {-family "Arial" -size 10 -weight normal}
+
+# Font for the toggle button (smaller)
+set btnFont {-family "Arial" -size 8 -weight normal}
+
+# Create toggle button (centered text, full width, smaller font)
+button .log.toggle_btn -text "Show More \u25BC" -command toggle_logs -font $btnFont -anchor center
+
+# Create labels with white text on black background
+label .log.log0 -text "" -font $myFont  -anchor w -wraplength 400
+label .log.log1 -text "" -font $myFont  -anchor w -wraplength 400
+label .log.log2 -text "" -font $myFont  -anchor w -wraplength 400
+
+# Place the labels in the grid
+grid .log.log0 -row 0 -column 0 -sticky ew -padx 2
+grid .log.log1 -row 1 -column 0 -sticky ew -padx 2
+grid .log.log2 -row 2 -column 0 -sticky ew -padx 2
+
+# Place the toggle button in the grid, full width
+grid .log.toggle_btn -row 3 -column 0 -sticky ew -padx 2 -pady 2
+
+# Make sure the column expands with the window
+grid columnconfigure .log 0 -weight 1
+
+# Place the frame in the main window
+grid .log -in .main -row 4 -column 0 -sticky ew
+
+
+
+
+
+
+
+
+
+
+
+
+
+#*******************************************
+#search box
+# Create a standalone dropdown frame (not inside .top1)
+frame .dropdownFrame -relief raised -bd 1
+
+# Listbox creation (unchanged)
+listbox .dropdownFrame.dropdown -width 35 -height 5 -yscrollcommand {.dropdownFrame.scroll set} -exportselection 0
+grid .dropdownFrame.dropdown -row 0 -column 0 -sticky nsew
+
+#****************  HOVER   *********************
+# Track mouse movement over the listbox
+bind .dropdownFrame.dropdown <Motion> {
+    set idx [%W nearest %y]
+    %W selection clear 0 end
+    %W selection set $idx
+    %W activate $idx
+}
+
+# Clear selection when mouse leaves
+bind .dropdownFrame.dropdown <Leave> {
+    %W selection clear 0 end
+}
+#****************  HOVER   *********************
+scrollbar .dropdownFrame.scroll -width 16 -orient vertical -command {.dropdownFrame.dropdown yview}
+grid .dropdownFrame.scroll -row 0 -column 1 -sticky ns
+
+# Bind events
+bind .top1.search <KeyRelease> {updateDropdown}
+bind .dropdownFrame.dropdown <<ListboxSelect>> {handleSelection}
+bind . <ButtonPress> {closeDropdownIfNeeded %W}
+
+# Initialize dropdown content
+place forget .dropdownFrame
+grid columnconfigure .dropdownFrame 0 -weight 1;
+#*******************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # main function
 proc main { } {
@@ -1257,6 +1753,7 @@ proc main { } {
     update_comment 
     update_marks
     run_pdflatex "main"
+    update_activity
     
     
     # Check if 'Previous' should be disabled (if at index 0)
