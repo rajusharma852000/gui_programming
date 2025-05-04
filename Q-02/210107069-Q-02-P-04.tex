@@ -1,0 +1,32 @@
+\documentclass{article}                              %%%:PREAMBLE:START:%                    %% line used by sed
+\usepackage{import}
+\subimport{autogstyle/}{autog.sty}
+\begin{document}                                     %%%:PREAMBLE:END:%                      %% line used by sed
+                                                     %%%:CLIP:START:% 			     %% this line used by sed : 
+	\setpanenumber{1}                            %%%:setpane:changeme4forsecondpane:%    %% this line is used by sed %%%
+	
+	\showscan{210107069-04}	
+	\showpageid{210107069-04}		
+	\showmarkingscheme{1+1+1+1}		
+	\putcommentT{to mai kya kru bhai ?? 1 1 1 1}\nextcommandmarker	     %% topcomment
+	\putcommentM{mai to kr hi rha hu 1 1 1 1}\nextcommandmarker	     %% middle comment										
+	\putcommentB{jai ho bhai 1 1 1 1}\nextcommandmarker																							
+	\putcommentC{tu bhi apna kaam kr 1 1 1 1 }\nextcommandmarker             %% custom comment																					
+	\putmarks{0+1+1+0}\nextcommandmarker	             %%:putmarks:g1:%                 %% this line is used by sed %%%
+
+	\rule{1in}{0pt}		     % the strut is necessary
+	
+	\setpanenumber{2}                            %%%:setpane:changeme4forsecondpane:%    %% this line is used by sed %%%
+	
+	\showscan{210107069-04}	
+	\showpageid{210107069-04}		
+	\showmarkingscheme{1+1+1+1}		
+	\putcommentT{mujhe kya pata 2 2 2 2}\nextcommandmarker	     %% topcomment
+	\putcommentM{middle pane 2 this}\nextcommandmarker	     %% middle comment										
+	\putcommentB{jai ho 2 2 22 2 }\nextcommandmarker																							
+	\putcommentC{jai ho 2 2 22 2}\nextcommandmarker             %% custom comment																					
+	\putmarks{1+1+1+0}\nextcommandmarker	             %%:putmarks:g1:%                 %% this line is used by sed %%%
+
+	\rule{1in}{0pt}\newpage			     % the strut is necessary
+                                                     %%%:CLIP:END:%                          %% this line used by sed  %%%
+\end{document}                                       %%%%:POSTAMBLE:%                        %% line used by sed
